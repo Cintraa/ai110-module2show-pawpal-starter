@@ -76,13 +76,25 @@ I used an AI coding assistant (Claude) in agent mode for the whole build. That c
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+- Task completion and task addition (the Phase 2 basics).
+- Input validation (bad times, priorities, frequencies, durations, blank text) and time normalization.
+- Multi-pet retrieval through `Owner.get_all_tasks()`, duplicate pet names, and a pet with no tasks.
+- Sorting: chronological across pets, single-digit hours, date before time, and priority with time tie-breaks.
+- Filtering by pet, status, both, and date.
+- Recurrence: daily, weekly, one-off, and completing the same task twice.
+- Conflicts: same start time, overlapping durations, back-to-back (not a conflict), completed/other-day tasks ignored, three-way clashes, the reschedule suggestion, and a fully booked day.
+- The time-budget plan.
+
+These matter because they are exactly the places where a scheduler silently gives wrong answers instead of crashing: a sort that's *almost* right, a recurring task that duplicates itself, or a clash that goes unnoticed.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+4 out of 5. Every scheduling rule has happy-path and edge-case tests, and the CLI demo runs the same code end to end. With more time I'd test:
+
+- tasks that cross midnight (e.g., 23:30 for 60 minutes),
+- completing an *overdue* recurring task (should it jump to tomorrow instead of due date + 1?),
+- automated UI tests with Streamlit's `AppTest`,
+- larger task lists, to confirm the sweep stays fast.
 
 ---
 
@@ -90,12 +102,24 @@ I used an AI coding assistant (Claude) in agent mode for the whole build. That c
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The separation between the logic layer and the UI. Because every rule lives in `pawpal_system.py` and the Scheduler reads through one Owner method, the CLI demo, the tests and the Streamlit app all exercise the same code. Adding the conflict-fix button to the UI took a few lines because `suggest_reschedule()` already existed and was tested.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+- Persist pets and tasks (save/load JSON) so data survives closing the browser.
+- Make the planner smarter: respect time windows ("walk between 7 and 9") and real owner preferences, not just a minute budget.
+- Add an "edit task" form instead of remove + re-add.
+- Decide on a clearer policy for overdue recurring tasks.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The AI writes code faster than I can review it, so my job as the lead architect is to define the boundaries, check the edge cases, and verify. That means deciding what each class owns, which object talks to which, and what "correct" means, then holding every suggestion to that. The best results came from giving the AI precise context and small, verifiable asks, and from never accepting a change until a test or the demo output proved it.
+
+---
+
+## 6. AI Strategy
+
+- **Most effective AI features:** agent mode with multi-file edits and a terminal in the loop. Recurrence touched `pawpal_system.py`, `main.py`, `app.py` and the tests at once, and the agent could run `python main.py` and `pytest` immediately to check its own work. Generating Mermaid from the class list and rendering it was a close second.
+- **A suggestion I rejected or modified:** storing a `Pet` object on each `Task`. It looked convenient, but the two dataclasses would reference each other and their auto-generated `repr`/`eq` would recurse. I kept a `pet_name` string instead (see 1b). I also modified the raw-string sort and the `combinations()` conflict one-liner (see 3b).
+- **Separate sessions per phase:** I ran the work phase by phase, with design → core → UI → algorithms → tests → polish as separate steps, each with its own goal, verification and commit. The commit history mirrors that. Keeping each step narrow meant the assistant wasn't juggling UI concerns while designing algorithms, and when something broke I knew which phase introduced it.
+- **Being the lead architect:** AI is a powerful generator but not the owner of the design. I set the structure (four classes, the Scheduler reads only through the Owner), decided the tradeoffs (warn instead of auto-fix, greedy plan), and required every claim to be backed by a test or real output before it went into the README.

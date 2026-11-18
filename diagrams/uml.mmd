@@ -1,15 +1,80 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% PawPal+ final design - matches pawpal_system.py
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~Pet~ pets
+        +add_pet(pet: Pet) Pet
+        +remove_pet(name: str) bool
+        +get_pet(name: str) Pet
+        +get_all_tasks() list~Task~
+        +find_task(task_id: str) Task
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +list~Task~ tasks
+        +add_task(task: Task) Task
+        +remove_task(task_id: str) bool
+        +get_tasks(include_completed: bool) list~Task~
+        +task_count() int
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        +str description
+        +str time
+        +int duration_minutes
+        +str priority
+        +str frequency
+        +date due_date
+        +bool completed
+        +str pet_name
+        +str task_id
+        +start_minutes() int
+        +end_minutes() int
+        +end_time() str
+        +is_recurring() bool
+        +mark_complete()
+        +mark_incomplete()
+        +reschedule(new_time: str)
+        +next_occurrence() Task
+        +overlaps(other: Task) bool
+        +summary() str
+    }
+
+    class Scheduler {
+        +Owner owner
+        +get_all_tasks() list~Task~
+        +get_tasks_for_date(day, include_completed) list~Task~
+        +sort_by_time(tasks) list~Task~
+        +sort_by_priority(tasks) list~Task~
+        +filter_tasks(pet_name, completed, tasks) list~Task~
+        +todays_schedule(day, include_completed) list~Task~
+        +mark_task_complete(task: Task) Task
+        +find_conflicts(day) list~tuple~
+        +detect_conflicts(day) list~str~
+        +find_next_free_slot(duration_minutes, day, earliest, latest, exclude_task_id) str
+        +suggest_reschedule(first: Task, second: Task) tuple
+        +generate_daily_plan(day) DailyPlan
+    }
+
+    class DailyPlan {
+        +date day
+        +int minutes_available
+        +list~Task~ scheduled
+        +list~Task~ skipped
+        +list~tuple~ decisions
+        +minutes_used() int
+        +explain() list~str~
+    }
+
+    Owner "1" o-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : has
+    Scheduler --> Owner : reads every task via get_all_tasks()
+    Scheduler ..> Task : sorts, filters, completes, reschedules
+    Scheduler ..> DailyPlan : creates
+    DailyPlan o-- Task : scheduled / skipped
+    Task ..> Task : next_occurrence() creates follow-up
