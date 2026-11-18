@@ -21,11 +21,13 @@ Relationships: an Owner *has* many Pets (aggregation), a Pet *has* many Tasks (c
 
 **b. Design changes**
 
-Yes. Before writing any logic I asked the AI to review the skeleton for missing relationships and bottlenecks. It flagged gaps that I'm carrying into implementation:
+Yes. Reviewing the skeleton (with AI) before writing logic, and then building the algorithms, exposed a few gaps:
 
-- **Tasks need to know their pet.** The Scheduler works on the flat list from `Owner.get_all_tasks()`, so each task needs a `pet_name` (stamped by `Pet.add_task()`) for filtering and messages. I chose a name string over a `Pet` object reference: a `Pet` holds its `Task`s, so a two-way object link would make the dataclass `__repr__`/`__eq__` recurse.
-- **Tasks need a stable id.** Two pets can both have "Breakfast," so the UI will need a `task_id` to pick the right one.
-- **Recurrence will need a date on `Task`.** Deferred to the algorithm phase, since the skeleton doesn't schedule across days yet.
+- **Added `due_date` to `Task`.** Recurring tasks need a date. Without one, "tomorrow's walk" and "today's walk" are indistinguishable, and today's schedule would fill up with future copies.
+- **Added `task_id`.** Two tasks can share a description ("Breakfast" for both pets), and the Streamlit UI needs a stable way to say *which* task to complete, remove or move.
+- **Added a `pet_name` back-reference, stamped by `Pet.add_task()`.** The Scheduler works on the flat list from `Owner.get_all_tasks()`, so each task needs to know its pet for filtering and warning messages. I deliberately stored the *name* instead of a `Pet` object. A `Pet` holds its `Task`s, so a `Task → Pet` object link would make the auto-generated dataclass `__repr__`/`__eq__` recurse forever.
+- **Recurrence is split across two classes.** `Task.next_occurrence()` only knows how to copy itself onto the next date; `Scheduler.mark_task_complete()` decides when to call it and which pet gets the copy. That keeps `Task` unaware of pets.
+- **Added a `DailyPlan` result class.** Returning a bare list from `generate_daily_plan()` lost the skipped tasks and the reasons, which the UI needs to explain the plan.
 
 ---
 
@@ -33,13 +35,21 @@ Yes. Before writing any logic I asked the AI to review the skeleton for missing 
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers:
+
+- **Time of day and duration:** every task has a start (`HH:MM`) and a length, which define its time window for sorting and overlap checks.
+- **Date:** only tasks due on the selected day are scheduled or checked for conflicts.
+- **Priority (high / medium / low):** decides what goes into the plan first and which task to move when two clash.
+- **The owner's time budget (`available_minutes`):** the hard limit for the daily plan.
+- **Completion status:** finished tasks don't conflict and aren't planned again.
+
+I ranked them by "what hurts the pet most if it's missed." Feeding and medication are tagged high priority and must be placed first; the time budget is the real-world hard constraint; exact clock times matter mainly for spotting double-booking. Owner preferences are currently limited to the time budget.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+- **Conflicts are warnings, not auto-fixes, and they use overlapping durations rather than exact time matches.** `detect_conflicts()` flags any two pending tasks whose windows overlap (`a.start < b.end and b.start < a.end`), even for *different* pets. That treats the owner as a single resource, so it can over-warn: you can refill the cat's water while the dog eats. I think that's the right trade for this scenario. A false alarm costs a glance, a missed clash can mean a skipped medication, and the owner keeps the final say: the UI suggests a move (`suggest_reschedule()`) but never moves anything on its own.
+- **The daily plan is greedy, not optimal.** `generate_daily_plan()` takes tasks in priority order and places each one that still fits the budget. In the demo, the 30-minute medium-priority evening walk is skipped while a 15-minute low-priority brushing still fits in the leftover time. An exact "knapsack" search could squeeze in more minutes, but it's harder to explain and overkill for a handful of tasks per day. The greedy version runs in O(n log n) and produces a one-line reason for every decision.
+- **Recurrence is anchored to the task's due date**, not to when I clicked "complete." A weekly Monday task finished on Wednesday comes back next Monday, which keeps routines on their usual days.
 
 ---
 
@@ -56,8 +66,9 @@ I used an AI coding assistant (Claude) in agent mode for the whole build. That c
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+- **Sorting on raw strings.** The first `sort_by_time()` suggestion was `sorted(tasks, key=lambda t: t.time)`. That's fine for `"08:00"` but breaks for `"9:00"` vs `"10:00"`, because strings compare character by character. Instead of switching the key to a parsed time everywhere, I normalized times once in `Task.__post_init__` (which also validates them). I locked the fix in with `test_sort_by_time_handles_single_digit_hours`.
+- **Conflict detection.** When I asked how to simplify `find_conflicts()`, the suggestion was a one-liner: `[(a, b) for a, b in combinations(tasks, 2) if a.overlaps(b)]`. It's shorter and very Pythonic, but it compares every pair. I kept the sorted sweep with an early `break` (comments explain it) because it's still readable, only compares tasks that could actually overlap, and returns clashes in time order. I did keep the AI's idea of an `overlaps()` method on `Task` so the rule lives in one place.
+- **Verification.** I ran `python main.py` after each phase to check the printed schedule by eye, ran `python -m pytest` (32 passing tests) after every logic change, and clicked through every Streamlit flow (add pet, duplicate pet, add overlapping task, apply fix, complete a recurring task, filters, plan, reset).
 
 ---
 

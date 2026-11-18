@@ -58,22 +58,92 @@ All logic lives in `pawpal_system.py`:
 Output of `python main.py`:
 
 ```
-Today's Schedule for Jordan (2 pets)
-========================================
-  TIME   PET    TASK                 MIN  PRIORITY STATUS
-  -----  -----  ------------------   ---  -------- -------
-  07:45  Luna   Breakfast             10  high     pending
-  08:00  Mochi  Morning walk          30  high     pending
-  14:00  Mochi  Vet checkup           60  high     pending
-  17:00  Luna   Play session          20  medium   pending
+PawPal+ | Owner: Jordan | Pets: Mochi, Luna | Daily care budget: 150 min
 
-After completing Luna's breakfast (4 tasks total):
-  TIME   PET    TASK                 MIN  PRIORITY STATUS
-  -----  -----  ------------------   ---  -------- -------
-  07:45  Luna   Breakfast             10  high     done
-  08:00  Mochi  Morning walk          30  high     pending
-  14:00  Mochi  Vet checkup           60  high     pending
-  17:00  Luna   Play session          20  medium   pending
+Today's Schedule (Wed 2026-11-18) - sorted by time
+==================================================
+  TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  -----------  -----  ------------------  ---  --------  -------  -------
+  07:30-07:40  Mochi  Breakfast            10  high      daily    pending
+  07:45-07:55  Luna   Breakfast            10  high      daily    pending
+  08:00-08:30  Mochi  Morning walk         30  high      daily    pending
+  08:00-08:15  Luna   Brush coat           15  low       weekly   pending
+  12:00-12:05  Luna   Thyroid medication    5  high      daily    pending
+  14:00-15:00  Mochi  Vet checkup          60  high      once     pending
+  17:00-17:20  Luna   Play session         20  medium    daily    pending
+  18:30-19:00  Mochi  Evening walk         30  medium    daily    pending
+
+Sorted by priority (high first, ties by time)
+=============================================
+  TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  -----------  -----  ------------------  ---  --------  -------  -------
+  07:30-07:40  Mochi  Breakfast            10  high      daily    pending
+  07:45-07:55  Luna   Breakfast            10  high      daily    pending
+  08:00-08:30  Mochi  Morning walk         30  high      daily    pending
+  12:00-12:05  Luna   Thyroid medication    5  high      daily    pending
+  14:00-15:00  Mochi  Vet checkup          60  high      once     pending
+  17:00-17:20  Luna   Play session         20  medium    daily    pending
+  18:30-19:00  Mochi  Evening walk         30  medium    daily    pending
+  08:00-08:15  Luna   Brush coat           15  low       weekly   pending
+
+Filter: Mochi's tasks (all dates)
+=================================
+  DATE        TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  ----------  -----------  -----  ------------------  ---  --------  -------  -------
+  2026-11-18  07:30-07:40  Mochi  Breakfast            10  high      daily    pending
+  2026-11-18  08:00-08:30  Mochi  Morning walk         30  high      daily    pending
+  2026-11-18  14:00-15:00  Mochi  Vet checkup          60  high      once     pending
+  2026-11-18  18:30-19:00  Mochi  Evening walk         30  medium    daily    pending
+  2026-11-19  10:00-10:45  Mochi  Grooming             45  medium    once     pending
+
+Conflict check
+==============
+  WARNING: Conflict for Mochi and Luna: 'Morning walk' (08:00-08:30) overlaps 'Brush coat' (08:00-08:15).
+  Suggestion: move Luna's 'Brush coat' to 08:30 (next free slot).
+
+Recurring tasks: completing Mochi's daily breakfast
+===================================================
+  Marked 'Breakfast' (2026-11-18) complete -> completed=True
+  Auto-created next daily occurrence: 'Breakfast' on 2026-11-19 at 07:30
+
+Filter: pending tasks today
+===========================
+  TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  -----------  -----  ------------------  ---  --------  -------  -------
+  07:45-07:55  Luna   Breakfast            10  high      daily    pending
+  08:00-08:30  Mochi  Morning walk         30  high      daily    pending
+  08:00-08:15  Luna   Brush coat           15  low       weekly   pending
+  12:00-12:05  Luna   Thyroid medication    5  high      daily    pending
+  14:00-15:00  Mochi  Vet checkup          60  high      once     pending
+  17:00-17:20  Luna   Play session         20  medium    daily    pending
+  18:30-19:00  Mochi  Evening walk         30  medium    daily    pending
+
+Tomorrow's Schedule (Thu 2026-11-19)
+====================================
+  TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  -----------  -----  ------------------  ---  --------  -------  -------
+  07:30-07:40  Mochi  Breakfast            10  high      daily    pending
+  10:00-10:45  Mochi  Grooming             45  medium    once     pending
+
+Daily plan: 140 of 150 min used
+===============================
+  TIME         PET    TASK                MIN  PRIORITY  REPEATS  STATUS
+  -----------  -----  ------------------  ---  --------  -------  -------
+  07:45-07:55  Luna   Breakfast            10  high      daily    pending
+  08:00-08:30  Mochi  Morning walk         30  high      daily    pending
+  08:00-08:15  Luna   Brush coat           15  low       weekly   pending
+  12:00-12:05  Luna   Thyroid medication    5  high      daily    pending
+  14:00-15:00  Mochi  Vet checkup          60  high      once     pending
+  17:00-17:20  Luna   Play session         20  medium    daily    pending
+
+  Why:
+   - Placed Luna's Breakfast (07:45): high priority, 10 min fits (140 min left).
+   - Placed Mochi's Morning walk (08:00): high priority, 30 min fits (110 min left).
+   - Placed Luna's Thyroid medication (12:00): high priority, 5 min fits (105 min left).
+   - Placed Mochi's Vet checkup (14:00): high priority, 60 min fits (45 min left).
+   - Placed Luna's Play session (17:00): medium priority, 20 min fits (25 min left).
+   - Skipped Mochi's Evening walk (18:30): medium priority, needs 30 min but only 25 min left.
+   - Placed Luna's Brush coat (08:00): low priority, 15 min fits (10 min left).
 ```
 
 ## 🧪 Testing PawPal+
@@ -92,16 +162,16 @@ Sample test output:
 # Paste your pytest output here
 ```
 
-## 📐 Smarter Scheduling
+## 🧠 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Feature | Method(s) | How it works |
+|---------|-----------|--------------|
+| Task sorting | `Scheduler.sort_by_time()`, `Scheduler.sort_by_priority()` | `sorted()` with a `lambda` key: `(due_date, time)` for chronological order; `(-priority_rank, due_date, time)` for priority order. `Task.__post_init__` zero-pads times so `"9:00"` can't sort after `"10:00"`. |
+| Filtering | `Scheduler.filter_tasks()`, `Scheduler.get_tasks_for_date()`, `Scheduler.todays_schedule()` | Optional `pet_name` (case-insensitive) and `completed` filters that can be combined; date filtering keeps tomorrow's recurring copies out of today's view. |
+| Conflict handling | `Scheduler.find_conflicts()`, `Scheduler.detect_conflicts()`, `Task.overlaps()` | Sort the day's pending tasks by start, then sweep: compare each task only with tasks that start before it ends. Overlap rule: `a.start < b.end and b.start < a.end`, so back-to-back tasks (08:00–08:30 then 08:30) are fine. Returns warning strings instead of raising. |
+| Conflict fixes | `Scheduler.suggest_reschedule()`, `Scheduler.find_next_free_slot()`, `Task.reschedule()` | Moves the lower-priority task of a pair (ties: the later one) to the earliest gap long enough for it, between 06:00 and 22:00. |
+| Recurring tasks | `Scheduler.mark_task_complete()`, `Task.next_occurrence()` | Marks the task done; for `daily`/`weekly` uses `timedelta` to create a fresh pending copy on the next due date with a new `task_id`. Completing the same task twice does not create duplicates. |
+| Time-budget plan | `Scheduler.generate_daily_plan()`, `DailyPlan.explain()` | Greedy: walk pending tasks in priority order, place each one that still fits the owner's `available_minutes`, skip the rest, then show the placed tasks in time order with reasons. |
 
 ## 📸 Demo Walkthrough
 
