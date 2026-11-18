@@ -42,16 +42,38 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## 🏗️ Implementation summary
+
+All logic lives in `pawpal_system.py`:
+
+- **`Task`** (dataclass): one activity with `description`, `time` (`HH:MM`), `duration_minutes`, `priority`, `frequency`, `completed`, plus the `pet_name` it belongs to and a `task_id`. `mark_complete()` flips its status.
+- **`Pet`** (dataclass): pet details and its `tasks`. `add_task()` attaches a task and stamps the pet's name on it; `task_count` reports how many it has.
+- **`Owner`** (dataclass): the owner, their daily `available_minutes`, and their `pets`. `add_pet()` rejects duplicate names; `get_all_tasks()` returns every pet's tasks in one list.
+- **`Scheduler`**: holds the `Owner` and reads tasks only through `Owner.get_all_tasks()`, so it always sees every pet. `todays_schedule()` returns them in time order.
+
+`main.py` builds an owner with two pets and prints the schedule; `tests/test_pawpal.py` checks task completion and task addition (`python -m pytest`).
+
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+Output of `python main.py`:
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+Today's Schedule for Jordan (2 pets)
+========================================
+  TIME   PET    TASK                 MIN  PRIORITY STATUS
+  -----  -----  ------------------   ---  -------- -------
+  07:45  Luna   Breakfast             10  high     pending
+  08:00  Mochi  Morning walk          30  high     pending
+  14:00  Mochi  Vet checkup           60  high     pending
+  17:00  Luna   Play session          20  medium   pending
+
+After completing Luna's breakfast (4 tasks total):
+  TIME   PET    TASK                 MIN  PRIORITY STATUS
+  -----  -----  ------------------   ---  -------- -------
+  07:45  Luna   Breakfast             10  high     done
+  08:00  Mochi  Morning walk          30  high     pending
+  14:00  Mochi  Vet checkup           60  high     pending
+  17:00  Luna   Play session          20  medium   pending
 ```
 
 ## 🧪 Testing PawPal+

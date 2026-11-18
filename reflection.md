@@ -47,8 +47,12 @@ Yes. Before writing any logic I asked the AI to review the skeleton for missing 
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used an AI coding assistant (Claude) in agent mode for the whole build. That covered brainstorming the classes, generating the Mermaid UML, turning the UML into dataclass skeletons, implementing the logic, writing the tests, wiring the Streamlit UI, and drafting documentation. The most effective prompts gave it the **full context** up front: the assignment spec, the constraint that the Scheduler must read through `Owner.get_all_tasks()`, and the existing files. Then they asked for one narrow thing at a time. Prompts that helped most:
+
+- "Review this skeleton: are any relationships missing, and where would the logic bottleneck?" (this led to `due_date`, `task_id` and `pet_name`)
+- "How should the Scheduler retrieve all tasks from the Owner's pets?"
+- "What are the most important edge cases to test for a pet scheduler with sorting and recurring tasks?"
+- "How could this algorithm be simplified for better readability or performance?"
 
 **b. Judgment and verification**
 
