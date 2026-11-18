@@ -57,18 +57,28 @@ I ranked them by "what hurts the pet most if it's missed." Feeding and medicatio
 
 **a. How you used AI**
 
-I used an AI coding assistant (Claude) in agent mode for the whole build. That covered brainstorming the classes, generating the Mermaid UML, turning the UML into dataclass skeletons, implementing the logic, writing the tests, wiring the Streamlit UI, and drafting documentation. The most effective prompts gave it the **full context** up front: the assignment spec, the constraint that the Scheduler must read through `Owner.get_all_tasks()`, and the existing files. Then they asked for one narrow thing at a time. Prompts that helped most:
+I used Claude as my AI coding assistant:
 
-- "Review this skeleton: are any relationships missing, and where would the logic bottleneck?" (this led to `due_date`, `task_id` and `pet_name`)
-- "How should the Scheduler retrieve all tasks from the Owner's pets?"
+- **Phase 1 (design):** brainstormed the four classes and their attributes and methods, generated the Mermaid diagram (`diagrams/uml_draft.mmd`), and turned it into dataclass skeletons. Then I had the AI review the skeleton for missing relationships, which is where `pet_name`, `task_id` and later `due_date` came from.
+- **Phase 2 (core):** fleshed out the four classes, built `main.py` as a CLI testing ground, and added the first two tests. The question "how should the Scheduler get tasks from the Owner?" settled the rule that it reads only through `Owner.get_all_tasks()`.
+- **Phase 3 (UI bridge):** wired `app.py` to the classes, using `st.session_state` to keep the Owner alive across Streamlit's reruns.
+- **Phase 4 (algorithms):** got a list of small algorithm ideas first, then added sorting, filtering, recurrence (with `timedelta`) and conflict detection one at a time, and finished with a simplification pass.
+- **Phase 5 (testing):** asked for a test plan covering happy paths and edge cases before writing the suite.
+- **Phase 6 (polish):** surfaced the Scheduler's features in the UI, updated the UML to match the final code, and drafted the README features list and walkthrough.
+
+The prompts that worked best gave the AI the full context first, then asked for one narrow thing. The context was the assignment spec, the existing files, and the rule that the Scheduler must read through the Owner. That's context engineering in practice. Examples:
+
+- "Review this skeleton: are any relationships missing, and where would the logic bottleneck?"
+- "Based on my skeletons, how should the Scheduler retrieve all tasks from the Owner's pets?"
 - "What are the most important edge cases to test for a pet scheduler with sorting and recurring tasks?"
 - "How could this algorithm be simplified for better readability or performance?"
 
 **b. Judgment and verification**
 
-- **Sorting on raw strings.** The first `sort_by_time()` suggestion was `sorted(tasks, key=lambda t: t.time)`. That's fine for `"08:00"` but breaks for `"9:00"` vs `"10:00"`, because strings compare character by character. Instead of switching the key to a parsed time everywhere, I normalized times once in `Task.__post_init__` (which also validates them). I locked the fix in with `test_sort_by_time_handles_single_digit_hours`.
-- **Conflict detection.** When I asked how to simplify `find_conflicts()`, the suggestion was a one-liner: `[(a, b) for a, b in combinations(tasks, 2) if a.overlaps(b)]`. It's shorter and very Pythonic, but it compares every pair. I kept the sorted sweep with an early `break` (comments explain it) because it's still readable, only compares tasks that could actually overlap, and returns clashes in time order. I did keep the AI's idea of an `overlaps()` method on `Task` so the rule lives in one place.
-- **Verification.** I ran `python main.py` after each phase to check the printed schedule by eye, ran `python -m pytest` (32 passing tests) after every logic change, and clicked through every Streamlit flow (add pet, duplicate pet, add overlapping task, apply fix, complete a recurring task, filters, plan, reset).
+- **Sorting on raw strings.** The first `todays_schedule()` in Phase 2 sorted with `key=lambda t: t.time`. That's fine for `"08:00"` but breaks for `"9:00"` vs `"10:00"`, because strings compare character by character. In Phase 4, instead of parsing times inside every sort, times get normalized once in `Task.__post_init__` (which also validates them). `test_sort_by_time_handles_single_digit_hours` locks the fix in.
+- **The plan's explanation.** The first daily-plan output listed its reasons in time order, so the "minutes left" numbers jumped around (140, 110, 10, 105…) and made no sense to read. Seeing that in the demo output led to the change: the explanation now follows the order in which the greedy algorithm made its decisions.
+- **Conflict detection.** The simplification pass on `find_conflicts()` offered a one-liner: `[(a, b) for a, b in combinations(tasks, 2) if a.overlaps(b)]`. It's shorter and very Pythonic, but it compares every pair. I kept the sorted sweep with an early `break` (comments explain it) because it's still readable, only compares tasks that could actually overlap, and returns clashes in time order. I did keep the idea of an `overlaps()` method on `Task` so the rule lives in one place.
+- **Verification.** Every phase was checked before moving on: `python main.py` after each phase to read the printed schedule, `python -m pytest` after every logic change (32 passing), and a click-through of the Streamlit flows (add pet, duplicate pet, overlapping task, apply fix, complete a recurring task, filters, plan, reset).
 
 ---
 
@@ -119,7 +129,7 @@ The AI writes code faster than I can review it, so my job as the lead architect 
 
 ## 6. AI Strategy
 
-- **Most effective AI features:** agent mode with multi-file edits and a terminal in the loop. Recurrence touched `pawpal_system.py`, `main.py`, `app.py` and the tests at once, and the agent could run `python main.py` and `pytest` immediately to check its own work. Generating Mermaid from the class list and rendering it was a close second.
-- **A suggestion I rejected or modified:** storing a `Pet` object on each `Task`. It looked convenient, but the two dataclasses would reference each other and their auto-generated `repr`/`eq` would recurse. I kept a `pet_name` string instead (see 1b). I also modified the raw-string sort and the `combinations()` conflict one-liner (see 3b).
-- **Separate sessions per phase:** I ran the work phase by phase, with design → core → UI → algorithms → tests → polish as separate steps, each with its own goal, verification and commit. The commit history mirrors that. Keeping each step narrow meant the assistant wasn't juggling UI concerns while designing algorithms, and when something broke I knew which phase introduced it.
-- **Being the lead architect:** AI is a powerful generator but not the owner of the design. I set the structure (four classes, the Scheduler reads only through the Owner), decided the tradeoffs (warn instead of auto-fix, greedy plan), and required every claim to be backed by a test or real output before it went into the README.
+- **Most effective AI features:** Generating the Mermaid diagram from the class list.
+- **A suggestion I rejected or modified:** storing a `Pet` object on each `Task`. It looked convenient, but the two dataclasses would reference each other and their auto-generated `repr`/`eq` would recurse. A `pet_name` string does the job instead (see 1b). The raw-string sort and the `combinations()` one-liner were also modified rather than taken as-is (see 3b).
+- **Separate sessions per phase:** each phase was its own focused stage: one goal (design, core, UI bridge, algorithms, tests, polish), one verification step, and one commit, so the git log reads phase by phase. Keeping them separate meant the AI wasn't juggling UI details while working on algorithms, and when something looked off I knew which phase had introduced it.
+- **Being the lead architect:** AI is a powerful generator, but it doesn't own the design. The structure was my call: four classes, and the Scheduler reads only through the Owner. So were the tradeoffs: warn instead of auto-fix, and a greedy plan. Every feature claim in the README had to be backed by a test or real output.
