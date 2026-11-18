@@ -149,18 +149,68 @@ Daily plan: 140 of 150 min used
 ## 🧪 Testing PawPal+
 
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The suite in `tests/test_pawpal.py` (32 tests) covers:
+
+- **Basics:** `mark_complete()` flips status; `Pet.add_task()` increases the task count and stamps the pet name.
+- **Validation:** time normalization and rejection of bad times, priorities, frequencies, durations and blank descriptions.
+- **Multi-pet access:** `Owner.get_all_tasks()` spans every pet; duplicate pet names are rejected; a pet with no tasks yields an empty schedule, no conflicts and an empty plan.
+- **Sorting correctness:** chronological order across pets, single-digit hours (`9:00` vs `10:00`), date-before-time ordering, and priority ordering with time tie-breaks.
+- **Filtering:** by pet (case-insensitive), by completion status, combined, and by date.
+- **Recurrence:** daily → next day, weekly → +7 days, one-off → nothing, and no duplicates when completing twice.
+- **Conflict detection:** identical start times across pets, overlapping durations for the same pet, back-to-back tasks *not* flagged, completed/other-day tasks ignored, every pair reported in a three-way clash, the reschedule suggestion resolves the clash, and a full day returns no free slot.
+- **Daily plan:** respects the time budget, places high priority first, and explains every decision.
+
+Sample run:
 
 ```
-# Paste your pytest output here
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python3
+rootdir: /tmp/ai110-module2show-pawpal-starter
+configfile: pytest.ini
+testpaths: tests
+plugins: platformdirs-4.13.5, anyio-4.15.1
+collecting ... collected 32 items
+
+tests/test_pawpal.py::test_mark_complete_changes_status PASSED           [  3%]
+tests/test_pawpal.py::test_adding_task_increases_pet_task_count PASSED   [  6%]
+tests/test_pawpal.py::test_time_is_normalized_to_zero_padded_hhmm PASSED [  9%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[hour-25] PASSED [ 12%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[am-pm-format] PASSED [ 15%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[unknown-priority] PASSED [ 18%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[unknown-frequency] PASSED [ 21%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[zero-duration] PASSED [ 25%]
+tests/test_pawpal.py::test_invalid_task_fields_raise_value_error[blank-description] PASSED [ 28%]
+tests/test_pawpal.py::test_get_all_tasks_collects_tasks_from_every_pet PASSED [ 31%]
+tests/test_pawpal.py::test_duplicate_pet_names_are_rejected PASSED       [ 34%]
+tests/test_pawpal.py::test_pet_with_no_tasks_produces_empty_results PASSED [ 37%]
+tests/test_pawpal.py::test_sort_by_time_returns_chronological_order PASSED [ 40%]
+tests/test_pawpal.py::test_sort_by_time_handles_single_digit_hours PASSED [ 43%]
+tests/test_pawpal.py::test_sort_by_time_orders_by_date_first PASSED      [ 46%]
+tests/test_pawpal.py::test_sort_by_priority_puts_high_first_and_breaks_ties_by_time PASSED [ 50%]
+tests/test_pawpal.py::test_filter_by_pet_name_is_case_insensitive PASSED [ 53%]
+tests/test_pawpal.py::test_filter_by_completion_status PASSED            [ 56%]
+tests/test_pawpal.py::test_filter_by_pet_and_status_combined PASSED      [ 59%]
+tests/test_pawpal.py::test_todays_schedule_excludes_other_dates PASSED   [ 62%]
+tests/test_pawpal.py::test_completing_daily_task_creates_task_for_next_day PASSED [ 65%]
+tests/test_pawpal.py::test_completing_weekly_task_creates_task_one_week_later PASSED [ 68%]
+tests/test_pawpal.py::test_completing_one_off_task_creates_nothing PASSED [ 71%]
+tests/test_pawpal.py::test_completing_same_task_twice_does_not_duplicate PASSED [ 75%]
+tests/test_pawpal.py::test_detects_duplicate_times_across_pets PASSED    [ 78%]
+tests/test_pawpal.py::test_detects_overlapping_durations_for_same_pet PASSED [ 81%]
+tests/test_pawpal.py::test_back_to_back_tasks_do_not_conflict PASSED     [ 84%]
+tests/test_pawpal.py::test_conflicts_ignore_completed_tasks_and_other_days PASSED [ 87%]
+tests/test_pawpal.py::test_three_way_overlap_reports_every_pair PASSED   [ 90%]
+tests/test_pawpal.py::test_suggest_reschedule_moves_lower_priority_task_to_next_free_slot PASSED [ 93%]
+tests/test_pawpal.py::test_find_next_free_slot_returns_none_when_day_is_full PASSED [ 96%]
+tests/test_pawpal.py::test_daily_plan_respects_time_budget_and_priority PASSED [100%]
+
+============================== 32 passed in 0.07s ==============================
 ```
+
+**Confidence level: ★★★★☆ (4/5).** Every scheduling rule has happy-path and edge-case tests, and the CLI demo exercises the same code end to end. One star is held back because the Streamlit UI was smoke-tested by hand rather than by automated UI tests, and a few edge cases are knowingly out of scope (tasks that cross midnight, overdue recurring tasks, persistence between sessions).
 
 ## 🧠 Smarter Scheduling
 
